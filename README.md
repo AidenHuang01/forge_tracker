@@ -13,3 +13,4 @@ Android application that tracks weapon forging.
 ## tools:
 1. Android Studio
 2. Android virtual machine
+3. Your Android device
