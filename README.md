@@ -1,7 +1,8 @@
 # forge_tracker
 Android application that tracks weapon forging.
 
-* Developor: Yucheng Huang  
+* Developor: Yucheng Huang 
+* Maintainer: Yuhcheng Huang 
 * Contact email: yuh032@ucsd.edu
 
 ## foundamantal functions:
