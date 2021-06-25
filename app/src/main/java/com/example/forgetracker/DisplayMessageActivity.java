@@ -19,8 +19,10 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private MyTimer myTimer;
     private CountingThread thread;
     TextView textView;
+    TextView textView2;
     Button but2;
     Button but3;
+    Button but4;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,9 +34,12 @@ public class DisplayMessageActivity extends AppCompatActivity {
 
         // Capture the layout's TextView and set the string as its text
         textView = findViewById(R.id.textView);
+        textView2 = findViewById(R.id.textView2);
         but2 = findViewById(R.id.button2);
         but3 = findViewById(R.id.button3);
         but3.setVisibility(View.INVISIBLE);
+        but4 = findViewById(R.id.button4);
+        but4.setVisibility(View.INVISIBLE);
         thread = new CountingThread();
         thread.start();
     }
@@ -47,12 +52,15 @@ public class DisplayMessageActivity extends AppCompatActivity {
             thread.stopped = false;
             but2.setText("Pause");
             but3.setVisibility(View.VISIBLE);
+            but4.setVisibility(View.INVISIBLE);
         }
         else if(but2.getText().equals("Pause") && !thread.stopped) {
             long currentTime = System.currentTimeMillis();
             myTimer.setPause_start(currentTime);
             thread.stopped = true;
             but2.setText("Resume");
+            myTimer.whenPause(currentTime);
+            updatePool();
         }
         else if(but2.getText().equals("Resume") && thread.stopped) {
             long currentTime = System.currentTimeMillis();
@@ -60,6 +68,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
             myTimer.addPause_time(pause_interval);
             thread.stopped = false;
             but2.setText("Pause");
+            myTimer.whenResume(currentTime);
         }
 
     }
@@ -69,6 +78,15 @@ public class DisplayMessageActivity extends AppCompatActivity {
         textView.setText(format(0));
         but2.setText("Start");
         but3.setVisibility(View.VISIBLE);
+        myTimer.whenStop(System.currentTimeMillis());
+        if(!thread.stopped) {
+            updatePool();
+        }
+        but4.setVisibility(View.VISIBLE);
+    }
+
+    public void clear(View view) {
+        textView2.setText("");
     }
 
     private class CountingThread extends Thread {
@@ -110,16 +128,37 @@ public class DisplayMessageActivity extends AppCompatActivity {
         return String.format("%02d:%02d:%02d %03d", hour, minute, second, milli);
     }
 
+    @SuppressLint("DefaultLocale")
+    private String formatSec(long elapsed) {
+        int hour, minute, second;
+        elapsed = elapsed / 1000;
+        second = (int) (elapsed % 60);
+        elapsed = elapsed / 60;
+        minute = (int) (elapsed % 60);
+        elapsed = elapsed / 60;
+        hour = (int) (elapsed % 60);
+        return String.format("%02d:%02d:%02d", hour, minute, second);
+    }
+
+    private void updatePool() {
+        ArrayList<Interval> intervalList = myTimer.getInterval_list();
+        String startTime = formatSec(intervalList.get(intervalList.size()-1).getStart_time() - myTimer.getStart_global());
+        String endTime = formatSec(intervalList.get(intervalList.size()-1).getEnd_time() - myTimer.getStart_global());
+        String newStr = startTime + " -- " + endTime + "\n";
+        String origin = textView2.getText().toString();
+        textView2.setText(origin+newStr);
+    }
+
 }
 class Interval {
     private long start_time;
     private long end_time;
-    private boolean is_gap;
+    private boolean active;
 
     public Interval(long start, long end, boolean status){
         this.start_time = start;
         this.end_time = end;
-        this.is_gap = status;
+        this.active = status;
     }
 
     public long getStart_time() {
@@ -138,10 +177,19 @@ class Interval {
         this.end_time = end_time;
     }
 
-    public boolean isGap() { return is_gap; }
+    public boolean isActive() { return active; }
 
-    public void setIs_gap(boolean is_gap) {
-        this.is_gap = is_gap;
+    public void setActive(boolean is_gap) {
+        this.active = is_gap;
+    }
+
+    @Override
+    public String toString() {
+        return "Interval{" +
+                "start_time=" + start_time +
+                ", end_time=" + end_time +
+                ", active=" + active +
+                '}';
     }
 }
 
@@ -205,7 +253,51 @@ class MyTimer {
         this.end_global = System.currentTimeMillis();
     }
 
+    public ArrayList<Interval> getInterval_list() { return interval_list; }
+
     public long get_elapsed() {
         return System.currentTimeMillis() - this.start_global -this.pause_time;
     }
+
+    public void whenStart() {
+        return;
+    }
+
+    public void whenPause(long currentTime) {
+        this.pause_list.add(currentTime);
+        if(this.start_list.size() == 0) {
+            Interval newInterval = new Interval(this.start_global, currentTime, true);
+            interval_list.add(newInterval);
+        }
+        else {
+            int index = pause_list.size() - 2;
+            Interval newInterval = new Interval(start_list.get(index), currentTime, true);
+            interval_list.add(newInterval);
+        }
+    }
+
+    public void whenResume(long currentTime) {
+        this.start_list.add(currentTime);
+        int index = start_list.size() - 1;
+        Interval newInterval = new Interval(pause_list.get(index), currentTime, false);
+        interval_list.add(newInterval);
+
+    }
+
+    public void whenStop(long currentTime) {
+        this.pause_list.add(currentTime);
+        if(this.start_list.size() == 0) {
+            Interval newInterval = new Interval(this.start_global, currentTime, true);
+            interval_list.add(newInterval);
+        }
+        else {
+            int index = start_list.size() - 1;
+            Interval newInterval = new Interval(start_list.get(index), currentTime, true);
+            interval_list.add(newInterval);
+        }
+        for(int i=0; i<interval_list.size(); i++) {
+            System.out.println(interval_list.get(i));
+        }
+    }
+
 }
