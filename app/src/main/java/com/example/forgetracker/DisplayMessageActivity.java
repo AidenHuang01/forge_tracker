@@ -17,7 +17,7 @@ import java.util.TimerTask;
 
 public class DisplayMessageActivity extends AppCompatActivity {
     private MyTimer myTimer;
-    boolean stopped = true;
+    private CountingThread thread;
     TextView textView;
     Button but2;
     Button but3;
@@ -32,62 +32,82 @@ public class DisplayMessageActivity extends AppCompatActivity {
 
         // Capture the layout's TextView and set the string as its text
         textView = findViewById(R.id.textView);
-        textView.setText(message);
         but2 = findViewById(R.id.button2);
         but3 = findViewById(R.id.button3);
-        myTimer = new MyTimer();
+        but3.setVisibility(View.INVISIBLE);
+        thread = new CountingThread();
+        thread.start();
     }
 
 
-    Timer timer = new Timer();
-    private int temp1 = 0;
-    private Handler handler = new Handler(){
-        public void handleMessage(Message msg) {
-            if(!stopped) {
-                textView.setText(format(System.currentTimeMillis()));
-            }
-        };
-    };
-
     public void clickShowTime(View view) {
-        if (stopped) {
-            stopped = false;
+        if(but2.getText().equals("Start") && thread.stopped) {
+            long currentTime = System.currentTimeMillis();
+            myTimer = new MyTimer(currentTime);
+            thread.stopped = false;
             but2.setText("Pause");
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    handler.sendEmptyMessage(0);
-                }
-            }, 0, 100);//延时0秒后每隔1秒刷新一次。
+            but3.setVisibility(View.VISIBLE);
         }
-        else {
-            stopped = true;
+        else if(but2.getText().equals("Pause") && !thread.stopped) {
+            long currentTime = System.currentTimeMillis();
+            myTimer.setPause_start(currentTime);
+            thread.stopped = true;
             but2.setText("Resume");
         }
+        else if(but2.getText().equals("Resume") && thread.stopped) {
+            long currentTime = System.currentTimeMillis();
+            long pause_interval = currentTime - myTimer.getPause_start();
+            myTimer.addPause_time(pause_interval);
+            thread.stopped = false;
+            but2.setText("Pause");
+        }
+
     }
 
     public void clickStopTime(View view) {
-        //stopped = true;
+        thread.stopped = true;
+        textView.setText(format(0));
+        but2.setText("Start");
+        but3.setVisibility(View.VISIBLE);
+    }
+
+    private class CountingThread extends Thread {
+        public boolean stopped = true;
+
+        private CountingThread() {
+            setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                if (!stopped) {
+                    String str = format(myTimer.get_elapsed());
+                    textView.setText(str);
+                }
+
+                try {
+                    sleep(10);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+            }
+        }
     }
 
 
-
-
-
-
-
-
-
     @SuppressLint("DefaultLocale")
-    public String format(long elapsed) {
-        int hour, minute, second;
+    private String format(long elapsed) {
+        int hour, minute, second, milli;
+        milli = (int) (elapsed % 1000);
         elapsed = elapsed / 1000;
         second = (int) (elapsed % 60);
         elapsed = elapsed / 60;
         minute = (int) (elapsed % 60);
         elapsed = elapsed / 60;
         hour = (int) (elapsed % 60);
-        return String.format("%02d:%02d:%02d", hour, minute, second);
+        return String.format("%02d:%02d:%02d %03d", hour, minute, second, milli);
     }
 
 }
@@ -118,9 +138,7 @@ class Interval {
         this.end_time = end_time;
     }
 
-    public boolean isGap() {
-        return is_gap;
-    }
+    public boolean isGap() { return is_gap; }
 
     public void setIs_gap(boolean is_gap) {
         this.is_gap = is_gap;
@@ -130,14 +148,19 @@ class Interval {
 class MyTimer {
     private long start_global;
     private long end_global;
+    private long pause_time;
+    private long pause_start;
     ArrayList<Long> start_list;
     ArrayList<Long> pause_list;
     ArrayList<Interval> interval_list;
 
-    public MyTimer() {
+    public MyTimer(long currentTime) {
         start_list = new ArrayList<Long>();
         pause_list = new ArrayList<Long>();
         interval_list = new ArrayList<Interval>();
+        this.start_global = currentTime;
+        this.pause_time = 0;
+        this.pause_start = start_global;
     }
 
     public long getStart_global() {
@@ -146,6 +169,13 @@ class MyTimer {
     public long getEnd_global() {
         return end_global;
     }
+
+    public long getPause_start() {
+        return pause_start;
+    }
+
+    public long getPause_time() { return pause_time; }
+
     public void setStart_global(long start_global) {
         this.start_global = start_global;
     }
@@ -153,7 +183,12 @@ class MyTimer {
         this.end_global = end_global;
     }
 
-
+    public void setPause_start(long pause_start) {
+        this.pause_start = pause_start;
+    }
+    public void addPause_time (long interval) {
+        this.pause_time += interval;
+    }
     public void start() {
         this.start_global = System.currentTimeMillis();
     }
@@ -168,5 +203,9 @@ class MyTimer {
 
     public void end() {
         this.end_global = System.currentTimeMillis();
+    }
+
+    public long get_elapsed() {
+        return System.currentTimeMillis() - this.start_global -this.pause_time;
     }
 }
