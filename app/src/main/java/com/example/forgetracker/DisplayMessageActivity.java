@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+
 
 public class DisplayMessageActivity extends AppCompatActivity {
     private MyTimer myTimer;
@@ -83,6 +85,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
             updatePool();
         }
         but4.setVisibility(View.VISIBLE);
+        clear(view);
     }
 
     public void clear(View view) {
@@ -161,6 +164,12 @@ class Interval {
         this.active = status;
     }
 
+    public Interval(long start, boolean status) {
+        this.start_time = start;
+        this.end_time = -1;
+        this.active = status;
+    }
+
     public long getStart_time() {
         return start_time;
     }
@@ -202,6 +211,8 @@ class MyTimer {
     ArrayList<Long> pause_list;
     ArrayList<Interval> interval_list;
 
+    boolean running;
+
     public MyTimer(long currentTime) {
         start_list = new ArrayList<Long>();
         pause_list = new ArrayList<Long>();
@@ -209,6 +220,7 @@ class MyTimer {
         this.start_global = currentTime;
         this.pause_time = 0;
         this.pause_start = start_global;
+        this.running = false;
     }
 
     public long getStart_global() {
@@ -274,6 +286,7 @@ class MyTimer {
             Interval newInterval = new Interval(start_list.get(index), currentTime, true);
             interval_list.add(newInterval);
         }
+        this.running = false;
     }
 
     public void whenResume(long currentTime) {
@@ -281,23 +294,34 @@ class MyTimer {
         int index = start_list.size() - 1;
         Interval newInterval = new Interval(pause_list.get(index), currentTime, false);
         interval_list.add(newInterval);
-
+        this.running = true;
     }
 
     public void whenStop(long currentTime) {
-        this.pause_list.add(currentTime);
-        if(this.start_list.size() == 0) {
-            Interval newInterval = new Interval(this.start_global, currentTime, true);
-            interval_list.add(newInterval);
+        if (running) {
+            this.pause_list.add(currentTime);
+            if(this.start_list.size() == 0) {
+                Interval newInterval = new Interval(this.start_global, currentTime, true);
+                interval_list.add(newInterval);
+            }
+            else {
+                int index = start_list.size() - 1;
+                Interval newInterval = new Interval(start_list.get(index), currentTime, true);
+                interval_list.add(newInterval);
+            }
         }
-        else {
-            int index = start_list.size() - 1;
-            Interval newInterval = new Interval(start_list.get(index), currentTime, true);
-            interval_list.add(newInterval);
-        }
+        Log.d("MyTimer", "whenStop()");
         for(int i=0; i<interval_list.size(); i++) {
-            System.out.println(interval_list.get(i));
+            Interval currInterval = interval_list.get(i);
+            String debugMsg;
+            if (currInterval.isActive()) {
+                debugMsg = "Forge >>> startTime: " + currInterval.getStart_time() + "  endTime: " + currInterval.getEnd_time() + "  span: " + (currInterval.getEnd_time() - currInterval.getStart_time());
+            } else {
+                debugMsg = "Gap   >>> startTime: " + currInterval.getStart_time() + "  endTime: " + currInterval.getEnd_time() + "  span: " + (currInterval.getEnd_time() - currInterval.getStart_time());
+            }
+            Log.d("MyTimer", debugMsg);
         }
+        this.running = false;
     }
 
 }
