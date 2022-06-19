@@ -14,3 +14,12 @@ Android application that tracks weapon forging.
 1. Android Studio
 2. Android virtual machine
 3. Your Android device
+
+## Design notes
+```java
+interface interval {
+    int ID;
+    long startTime;
+    long endTime;
+}
+```

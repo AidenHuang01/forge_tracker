@@ -22,6 +22,8 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private CountingThread thread;
     TextView textView;
     TextView textView2;
+    TextView textViewActiveTime;
+    TextView textViewIdleTime;
     Button but2;
     Button but3;
     Button but4;
@@ -37,6 +39,8 @@ public class DisplayMessageActivity extends AppCompatActivity {
         // Capture the layout's TextView and set the string as its text
         textView = findViewById(R.id.textView);
         textView2 = findViewById(R.id.textView2);
+        textViewActiveTime = findViewById(R.id.textViewActiveTime);
+        textViewIdleTime = findViewById(R.id.textViewIdleTime);
         but2 = findViewById(R.id.button2);
         but3 = findViewById(R.id.button3);
         but3.setVisibility(View.INVISIBLE);
@@ -49,12 +53,14 @@ public class DisplayMessageActivity extends AppCompatActivity {
 
     public void clickShowTime(View view) {
         if(but2.getText().equals("Start") && thread.stopped) {
+            clear(view);
             long currentTime = System.currentTimeMillis();
             myTimer = new MyTimer(currentTime);
             thread.stopped = false;
             but2.setText("Pause");
             but3.setVisibility(View.VISIBLE);
             but4.setVisibility(View.INVISIBLE);
+            updateTime();
         }
         else if(but2.getText().equals("Pause") && !thread.stopped) {
             long currentTime = System.currentTimeMillis();
@@ -63,6 +69,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
             but2.setText("Resume");
             myTimer.whenPause(currentTime);
             updatePool();
+            updateTime();
         }
         else if(but2.getText().equals("Resume") && thread.stopped) {
             long currentTime = System.currentTimeMillis();
@@ -71,6 +78,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
             thread.stopped = false;
             but2.setText("Pause");
             myTimer.whenResume(currentTime);
+            updateTime();
         }
 
     }
@@ -85,7 +93,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
             updatePool();
         }
         but4.setVisibility(View.VISIBLE);
-        clear(view);
+        updateTime();
     }
 
     public void clear(View view) {
@@ -152,6 +160,13 @@ public class DisplayMessageActivity extends AppCompatActivity {
         textView2.setText(origin+newStr);
     }
 
+    private void updateTime() {
+        String activeTimeString = formatSec(myTimer.getActiveTime());
+        String idleTimeString = formatSec(myTimer.getIdleTime());
+        textViewActiveTime.setText(activeTimeString);
+        textViewIdleTime.setText(idleTimeString);
+    }
+
 }
 class Interval {
     private long start_time;
@@ -177,6 +192,8 @@ class Interval {
     public long getEnd_time() {
         return end_time;
     }
+
+    public long getLength() {return end_time - start_time;}
 
     public void setStart_time(long start_time) {
         this.start_time = start_time;
@@ -322,6 +339,26 @@ class MyTimer {
             Log.d("MyTimer", debugMsg);
         }
         this.running = false;
+    }
+
+    public long getActiveTime() {
+        long activeTime = 0;
+        for (Interval interval : interval_list) {
+            if (interval.isActive()) {
+                activeTime += interval.getLength();
+            }
+        }
+        return activeTime;
+    }
+
+    public long getIdleTime() {
+        long idleTime = 0;
+        for (Interval interval : interval_list) {
+            if (!interval.isActive()) {
+                idleTime += interval.getLength();
+            }
+        }
+        return idleTime;
     }
 
 }
