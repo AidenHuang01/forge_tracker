@@ -5,6 +5,10 @@ Android application that tracks forging.
 * Maintainer: Yuhcheng Huang 
 * Contact email: yuh032@ucsd.edu
 
+
+## Demo:
+![](./resource/timer.jpg)
+
 ## foundamantal functions:
 1. Showing and tracking the time of forging.
 2. Visualize the tracking result.
